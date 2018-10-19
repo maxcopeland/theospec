@@ -118,3 +118,6 @@ uploads/
 
 # Database
 *.db
+
+# Notebooks
+*.ipynb 

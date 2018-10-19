@@ -7,9 +7,9 @@ from flask_login import LoginManager
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'a76d7217ce0c96c0464127de75e1d8e7'
+app.config['SECRET_KEY'] = 'secret_key' # change for production
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///theospec.db'
-app.config['UPLOAD_FOLDER'] =  "C:\\Users\\MCopeland155816\\Documents\\fvxe\\spectral_sim\\theospec\\uploads"
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
