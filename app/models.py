@@ -44,10 +44,10 @@ class Material(db.Model):
 class NKValues(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
-    wavelength = db.Column(db.Numeric, unique=False, nullable=False)
-    n_value = db.Column(db.Numeric, unique=False, nullable=False)
-    k_value = db.Column(db.Numeric, unique=False, nullable=True)
-    material_id = db.Column(db.Integer, db.ForeignKey('material.id'), nullable=False)
+    wavelength = db.Column(db.Float, unique=False, nullable=False)
+    n_value = db.Column(db.Float, unique=False, nullable=False)
+    k_value = db.Column(db.Float, unique=False, nullable=True)
+    material_id = db.Column(db.Float, db.ForeignKey('material.id'), nullable=False)
 
     def __repr__(self):
         return f"NKValues('{self.wavelength}', '{self.n_value}', '{self.k_value}')'"
