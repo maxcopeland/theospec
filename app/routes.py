@@ -20,8 +20,7 @@ def home():
 @app.route("/about")
 @login_required
 def about():
-    form = CompanyForm()
-    return render_template('about.html', form=form)
+    return render_template('about.html')
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
