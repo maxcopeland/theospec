@@ -111,7 +111,7 @@ def simulator():
         session['trench_layers'] = form.trench_layers.data
         # decimal cant serialize, thus changing to string
         session['pattern_density'] = str(form.pattern_density.data)
-        return redirect(url_for('test'))
+        return redirect(url_for('/data/'))
     return render_template('simulator.html', form=form)
 
 @app.route('/simulator/dashboard', methods=['GET', 'POST'])
@@ -133,35 +133,35 @@ import numpy as np
 
 
 external_scripts = [
-    {
-        'src':"https://code.jquery.com/jquery-3.3.1.slim.min.js", 
-        'integrity':"sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
-        'crossorigin':"anonymous"
-    },
-    {
-        'src':"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js",
-        'integrity':"sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49", 
-        'crossorigin':"anonymous"
-    },
-    {
-        'src':"https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js",
-        'integrity':"sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy", 
-        'crossorigin':"anonymous"
-    }
+    # {
+    #     'src':"https://code.jquery.com/jquery-3.3.1.slim.min.js", 
+    #     'integrity':"sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo",
+    #     'crossorigin':"anonymous"
+    # },
+    # {
+    #     'src':"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js",
+    #     'integrity':"sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49", 
+    #     'crossorigin':"anonymous"
+    # },
+    # {
+    #     'src':"https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js",
+    #     'integrity':"sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy", 
+    #     'crossorigin':"anonymous"
+    # }
 ]
 
-external_stylesheets = [
-    {
-        'rel':'stylesheet',
-        'href': "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css",
-        'integrity': "sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO",
-        'crossorigin':'anonymous'
-    },
-    {
-        'rel':'stylesheet',
-        'type': 'text/css',
-        'href': 'static/main.css'
-    }
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css'
+    # {
+    #     'rel':'stylesheet',
+    #     'href': "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css",
+    #     'integrity': "sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO",
+    #     'crossorigin':'anonymous'
+    # },
+    # {
+    #     'rel':'stylesheet',
+    #     'type': 'text/css',
+    #     'href': 'static/main.css'
+    # }
 ]
 
 data_app = dash.Dash(__name__, server=app, external_scripts=external_scripts,
@@ -170,36 +170,112 @@ data_app = dash.Dash(__name__, server=app, external_scripts=external_scripts,
 max_thk = 1000  # Global setpoints for testing
 mat_name = 'SiO2' # Global setpoints for testing
 
-data_app.layout = html.Div([
-    html.H1('theospec', className='col-xl-12', style={'align': 'center'}),
-    html.Div([
-        dcc.Dropdown(
-            id='active-dropdown',
-            options=[{'label': i.name, 'value': i.name} for i in Material.query.all()],
-            value='SiO2' 
-            )], className='col-md-2'),
-    html.Div([
-        dcc.Input(
-            id='active-thickness',
-            placeholder='Enter thickness (A)',
-            type='numeric',
-            value=1000,
-            min=0,
-            max=10000
-            ),
-        html.Button('Enter', id='active-button')
-        ], className='col-md-2'),
-    html.Div([
-        dcc.Graph(id='graph-with-slider'),
-        dcc.Slider(
-            id='thickness-slider',
-            min=0,
-            max=max_thk,
-            step=10,
-            value=max_thk,
+def serve_layout():
+    #### Cannot retrive data from session. Using dummy data below
+    active_layers = 5 #int(session['active_layers'])
+    trench_layers = 5# int(session['trench_layers'])
 
-            )], className='col-md-6')],
-className='row')
+    active_rows = [html.H3('Active Stack')]
+    trench_rows = [html.H3('Trench Stack')]
+
+    for layers, rows, stack in zip((active_layers, trench_layers), (active_rows, trench_rows), ('active', 'trench')):
+        for i in range(layers):
+            row = html.Div([ # Active Stack row
+                    html.Div([
+                        dcc.Dropdown(
+                            id='{}-dropdown{}'.format(stack, i),
+                            options=[{'label': mat.name, 'value': mat.name} for mat in Material.query.all()],
+                            value='SiO2' 
+                        ),
+                    ], style=dict(width='10%', display='table-cell')),
+                    html.Div([
+                        dcc.Input(
+                            id='{}-thickness{}'.format(stack, i),
+                            placeholder='Enter thickness (A)',
+                            type='numeric',
+                            value=1000,
+                            min=0,
+                            max=10000
+                            ),
+                    ], style=dict(width='20%', display='table-cell')),
+                ], className='row')
+            rows.append(row)
+
+    return html.Div([
+                html.Div(active_rows, className='three columns'),  # Active Stack Column
+                html.Div(trench_rows, className='three columns'),
+                html.Div(html.Button('Enter', id='active-button')), # Trench Stack Column
+                html.Div([
+                    dcc.Graph(id='graph-with-slider'),
+                    dcc.Slider(
+                        id='thickness-slider',
+                        min=0,
+                        max=max_thk,
+                        step=10,
+                        value=max_thk,
+
+                )], className='six columns')
+            ], className='row')
+
+
+data_app.layout = serve_layout
+
+# data_app.layout = html.Div([
+#     html.Div([
+#         html.H3('Active Stack'),
+#         html.Div([ # Active Stack column
+#             html.Div([
+#                 dcc.Dropdown(
+#                     id='active-dropdown',
+#                     options=[{'label': i.name, 'value': i.name} for i in Material.query.all()],
+#                     value='SiO2' 
+#                 ),
+#             ], style=dict(width='10%', display='table-cell')),
+#             html.Div([
+#                 dcc.Input(
+#                     id='active-thickness',
+#                     placeholder='Enter thickness (A)',
+#                     type='numeric',
+#                     value=1000,
+#                     min=0,
+#                     max=10000
+#                     ),
+#             ], style=dict(width='20%', display='table-cell')),
+#         ], className='row'),
+#     ], className='three columns'),
+#     html.Div([
+#         html.H3('Trench Stack'),
+#         html.Div([ # Trench Stack column
+#             html.Div([
+#                 dcc.Dropdown(
+#                     id='trench-dropdown',
+#                     options=[{'label': i.name, 'value': i.name} for i in Material.query.all()],
+#                     value='SiO2' 
+#                 ),
+#             ], style=dict(width='10%', display='table-cell')),
+#             html.Div([
+#                 dcc.Input(
+#                     id='trench-thickness',
+#                     placeholder='Enter thickness (A)',
+#                     type='numeric',
+#                     value=1000,
+#                     min=0,
+#                     max=10000
+#                     ),
+#             ], style=dict(width='20%', display='table-cell')),
+#         ], className='row'),
+#     ], className='three columns'),
+#     html.Div([
+#         dcc.Graph(id='graph-with-slider'),
+#         dcc.Slider(
+#             id='thickness-slider',
+#             min=0,
+#             max=max_thk,
+#             step=10,
+#             value=max_thk,
+
+#             )], className='six columns')
+# ], className='row')
 
 def get_nkvals(mat_name):
     mat_id = Material.query.filter_by(name=mat_name).first().id
@@ -228,12 +304,12 @@ def compute_reflectance(mat_name, thickness):
 
 
 @data_app.callback(dash.dependencies.Output('graph-with-slider', 'figure'), 
-                   [dash.dependencies.Input('active-dropdown', 'value'),
+                   [dash.dependencies.Input('active-dropdown0', 'value'),
                     dash.dependencies.Input('active-button', 'n_clicks')],
-                   [dash.dependencies.State('active-thickness', 'value'),
+                   [dash.dependencies.State('active-thickness0', 'value'),
                     dash.dependencies.State('thickness-slider', 'value')])
 @app.route('/data/')
-def data(selected_material, n_clicks, starting_thickness, selected_thickness):
+def data(selected_material,n_clicks, starting_thickness, selected_thickness):
     df = compute_reflectance(selected_material, starting_thickness)
     return {
         'data': [go.Scatter(
