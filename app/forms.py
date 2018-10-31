@@ -1,8 +1,8 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, ValidationError, TextAreaField, \
-                    FieldList, FormField
-from wtforms.validators import DataRequired, Length, Email, EqualTo
+                    FieldList, FormField, RadioField, SelectField, IntegerField, DecimalField
+from wtforms.validators import DataRequired, Length, Email, EqualTo, NumberRange
 from app.models import User
 
 class RegistrationForm(FlaskForm):
@@ -43,3 +43,16 @@ class UploadForm(FlaskForm):
     material = StringField('Material', validators=[DataRequired()])
     file = FileField(validators=[FileRequired(), FileAllowed(['csv', 'xlsx', 'txt'], 'Only .csv, .txt, or .xlsx files allowed')])
     submit = SubmitField('Upload')
+
+class SimulatorForm(FlaskForm):
+    medium = RadioField('Medium', choices = [('Air', 'Air'), ('Water', 'Water')], validators=[DataRequired()])
+    active_layers = IntegerField('Number of Active Layers', validators=[DataRequired(), 
+                                                              NumberRange(min=1, max=10, 
+                                                              message="Number of layers can range from 1 to 10")])
+    trench_layers = IntegerField('Number of Trench Layers', validators=[DataRequired(), 
+                                                              NumberRange(min=1, max=10, 
+                                                              message="Number of layers can range from 1 to 10")])
+    pattern_density = DecimalField('Pattern Density', validators=[DataRequired(), 
+                                                              NumberRange(min=0, max=1, 
+                                                              message="Pattern density can range from 0 to 1")])
+    submit = SubmitField('Send to Dashboard')

@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="content-section">
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            <fieldset class="form-group">
+                <h2><legend class="border-bottom mb-4">Stack Information</legend></h2>
+                <div class="form-group">
+                    <!-- {{ form.medium.label(class="form-control-label") }} -->
+                    <h6>Medium</h6>
+                    {% if form.medium.errors %}
+                        {{ form.medium(class="form-control form-control-lg is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.medium.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {% for medium in form.medium %}
+                            <tr>
+                                <td> {{medium }} </td>
+                                <td> {{medium.label }} </td>
+                            </tr>
+                        {% endfor %}
+                </div>
+
+                        <!-- {{ form.medium(class="form-control form-control-lg") }} -->
+                    {% endif %}
+                <div class="form-group">
+                    <h6>{{ form.active_layers.label(class="form-control-label") }}</h6>
+                    {% if form.active_layers.errors %}
+                        {{ form.active_layers(class="form-control form-control-lg is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.active_layers.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.active_layers(class="form-control form-control-lg") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <h6>{{ form.trench_layers.label(class="form-control-label") }}</h6>
+                    {% if form.trench_layers.errors %}
+                        {{ form.trench_layers(class="form-control form-control-lg is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.trench_layers.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.trench_layers(class="form-control form-control-lg") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <h6>{{ form.pattern_density.label(class="form-control-label") }}</h6>
+                    {% if form.pattern_density.errors %}
+                        {{ form.pattern_density(class="form-control form-control-lg is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.pattern_density.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.pattern_density(class="form-control form-control-lg") }}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{ form.submit(class="btn btn-outline-info") }}
+                </div>
+            </fieldset>
+        </form>
+    </div>
+{% endblock %}
