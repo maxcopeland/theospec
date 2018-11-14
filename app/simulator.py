@@ -1,5 +1,5 @@
+import ast
 import itertools
-from app import app
 import numpy as np
 import dash
 import dash_core_components as dcc
@@ -8,6 +8,12 @@ from flask import Flask, render_template
 import pandas as pd
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output, State
+from scipy.interpolate import interp1d
+from tmm.color import calc_reflectances
+
+from app import app, db
+from app.models import User, Post, Material, NKValues
+
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -140,7 +146,7 @@ def create_possible_stacks(stack_type, film_options=[1,2,3,4], max_layers=max_la
                         dcc.Dropdown(
                             id='{}-film-{}'.format(stack_type, i), 
                             placeholder='Film',
-                            options=[{'label':i, 'value':i} for i in film_options])
+                            options=[{'label':mat.name, 'value':mat.name} for mat in Material.query.all()])
                         ], 
                         style= {
                             'width':'30%', 
@@ -199,21 +205,23 @@ def generate_output_id_trench(n):
     [Input('active_nlayers_dropdown', 'value')]
 )
 def display_controls_active(n):
-    return html.Div('Test for active {}'.format(n), id=generate_output_id_active(n))
+    return html.Div('Controls container for active {}'.format(n), id=generate_output_id_active(n))
 
 @simulator.callback(
     Output('data-output-trench', 'children'),
     [Input('trench_nlayers_dropdown', 'value')]
 )
 def display_controls_trench(n):
-    return html.Div('Test for trench {}'.format(n), id=generate_output_id_trench(n))
+    return html.Div('Controls container trench {}'.format(n), id=generate_output_id_trench(n))
 
 
 # Func called to all stack data entry callbacks
 def stack_calc(values):
+    # TODO- cleaner parsing
+
     films = []
     for val in values[::2]:
-        films.append(val)
+        films.append(str(val))
     thks = []
     for val in values[1::2]:
         thks.append(int(val))
@@ -401,10 +409,7 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(1), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('medium', 'value'),
-    State('pattern-density-slider', 'value'),
-    State('removal-rate', 'value'),
-    State('active-film-{}'.format(1), 'value'),
+    [State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value')
     ])
 def callback_data(n_clicks, *values):
@@ -586,6 +591,55 @@ def create_data_container(n_clicks, n_active, n_trench):
         print(generate_data_output_id(n_active, n_trench))
         return html.Div(id=generate_data_output_id(n_active, n_trench))
 
+def get_nkvals(mat_name):
+    mat_id = Material.query.filter_by(name=mat_name).first().id
+    nk_vals = NKValues.query.filter_by(material_id=mat_id).all()
+    df = pd.DataFrame([(d.wavelength, d.n_value, d.k_value) for d in nk_vals], 
+                  columns=['wavelength', 'n', 'k'])
+    df['nk'] = df['n'] + (1j * df['k'])
+    ### Handle nm from data instead of Angstrom
+    ## TODO- make more robust
+    if df.wavelength.min() > 1000:
+        df['wavelength'] = df.wavelength /10
+    return df
+
+def compute_reflectance(mat_names, thicknesses, medium):
+    """
+    Compute reflectances of given film stack
+
+    input
+    ======
+
+    mat_names: list
+        string names of film type
+    thicknesses: list
+        int values of film thicknesses in Angstroms
+    medium: float
+        index of refraction of medium on top of stack (air, water, etc)
+
+    output
+    ======
+
+    pandas DataFrame
+        columns: wavelength, reflectance
+
+    """
+
+    mat_fns = []
+    for mat in mat_names:
+        mat_df = get_nkvals(mat)
+        mat_fn = interp1d(mat_df.wavelength, mat_df.nk, kind='linear')
+        mat_fns.append(mat_fn)
+    medium_fn = lambda wavelength: medium
+    si_df = get_nkvals('Si') ## change to make film passable
+    si_fn = interp1d(si_df.wavelength, si_df.nk, kind='linear')
+    reflectance = calc_reflectances(n_fn_list=[medium_fn] + mat_fns + [si_fn], 
+                                    d_list=[np.inf] + thicknesses + [np.inf], 
+                                    th_0=0, 
+                                    spectral_range=(260, 1700))
+    r_df = pd.DataFrame(reflectance, columns=['wavelength', 'r'])
+    return r_df
+
 def spectra_calc_2d():
     """
     Calculate spectra for 2D plot
@@ -600,28 +654,45 @@ def spectra_calc_3d():
     """
     pass
 
+
 def generate_callback(n1, n2):
-    def callback_data(x1, x2, medium, slider, rr):
-        print('test total value for {} and {}'.format(n1, n2))
-        print('x1: {}, x2:{}'.format(x1, x2))
-        active_films = [int(x) for x in x1.split('*')[0][1:-1].split(',')]
-        active_thks = [int(x) for x in x1.split('*')[1][1:-1].split(',')]
-        trench_films = [int(x) for x in x2.split('*')[0][1:-1].split(',')]
-        trench_thks = [int(x) for x in x2.split('*')[1][1:-1].split(',')]
+    def callback_data(x1, x2, medium, pattern_density, rr):
+        # print('test total value for {} and {}'.format(n1, n2))
+        # print('Incoming for x1: {},\n Incoming for x2:{}'.format(x1, x2))
+    
+        #BUG: active and trench cant have different number of layers?
+
+        active_films = ast.literal_eval(x1.split('*')[0])
+        active_thks = ast.literal_eval(x1.split('*')[1])
+        active_r = compute_reflectance(active_films, active_thks, medium) #BUG: calculating twice?
+
+        trench_films = ast.literal_eval(x2.split('*')[0])
+        trench_thks = ast.literal_eval(x2.split('*')[1])
+        trench_r = compute_reflectance(trench_films, trench_thks, medium) #BUG: calculating twice?
+
+
+        # print('Active', active_r.head())
+        # print('Trench', trench_r.head())
+        base_reflectance = trench_r.values 
+        ref_si = compute_reflectance(['Si'], [50000], 1.33333)
+
+        np.multiply(base_reflectance[:,1], (1 - (pattern_density/100)), base_reflectance[:,1])
+        np.add(base_reflectance[:,1], active_r.r*(pattern_density/100), base_reflectance[:,1])
+        np.divide(base_reflectance[:,1], ref_si.r, base_reflectance[:,1])
+        # print('Parsed Incoming active films: {}'.format(active_films))
+        # print('Parsed Incoming active thks: {}'.format(active_thks))
+        # print('Parsed Incoming trench films: {}'.format(trench_films))
+        # print('Parsed Incoming trench thks: {}'.format(trench_thks))
         graph = html.Div([
-            html.Div(str(slider) + str(medium) + str(rr)),
+            # html.Div(str(slider) + str(medium) + str(rr)),
             dcc.Graph(
                 figure={
                     'data': [
                         {
-                            'x':active_films,
-                            'y':active_thks,
-                            'mode': 'markers'
-                        },
-                        {
-                            'x':trench_films,
-                            'y':trench_thks,
-                            'mode': 'markers'
+                            'x':base_reflectance[:,0],
+                            'y':base_reflectance[:,1],
+                            'mode': 'line',
+                            'name': 'Reflectance'
                         }
                     ]
                 }
