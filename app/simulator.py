@@ -24,87 +24,263 @@ simulator.config['suppress_callback_exceptions']=True
 
 max_layers = 10
 
-simulator.layout= html.Div([
-    html.Div(
-        html.H1('Theospec'),
-        style={'textAlign':'center'}
-    ),
-    html.Div([
+simulator.layout= html.Div(
+    [
         html.Div([
-            html.H5('Medium'),
+            html.Span("theospec", 
+                className='app-title',
+                style={
+                    "color": "white",
+                    "fontSize": "42px",
+                    "fontWeight": "bold",
+                    "textAlign": "center",
+                    "marginBottom": "0",
+                    "marginTop": "5",
+                    "marginLeft": "10",
+                }
+                ),
+            ],
+            className="row header",
+            style={
+                'height':'80',
+                'backgroundColor':'#506784',
+                'border': '1px solid #C8D4E3',
+            }
+        ),
+        html.Div([ # Input/Plot row
             html.Div(
-                dcc.RadioItems(
-                    id='medium',
-                    options=[
-                        {'label':'Air', 'value':1},
-                        {'label':'Water', 'value':1.3333}
-                ]), style={'display':'inline-block', 'vertical-align':'middle'})
-        ], className='one column'),
-        html.Div([
-            html.H5('Pattern Density'),
-            html.Div(
-                dcc.Slider(
-                    id='pattern-density-slider',
-                    min=0,
-                    max=100,
-                    step=5,
-                    value=50
-                )),
-            html.Div(id='slider-output', style={'textAlign':'center'})
-        ], className='two columns'),
-        html.Div([
-            html.H5('Removal Rate'),
-            html.Div(
-                dcc.Input(
-                    id='removal-rate', type='text', placeholder='A/s' 
-                )
+                [ # Left side of page
+                    html.Div( 
+                        [ # Top input row, left side
+                            html.Div( # Medium box
+                                [
+                                    html.P( # Medium box title
+                                        'Medium',
+                                        style={
+                                            "color": "#506784",
+                                            "fontSize": "16px",
+                                            "fontWeight": "bold",
+                                            "textAlign": "center",
+                                            "marginBottom": "0",
+                                            "marginTop": "5"
+                                        },
+                                    ),
+                                    html.Div( # Medium radio buttons
+                                        dcc.RadioItems(
+                                            id='medium',
+                                            options=[
+                                                {'label':'Air', 'value':1},
+                                                {'label':'Water', 'value':1.3333}
+                                            ]
+                                        ), 
+                                        style={"padding": "0px 5px 5px 5px", "marginBottom": "5"}, 
+                                    )
+                                ],  
+                                className='four columns',
+                                style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #C8D4E3",
+                                    "borderRadius": "3px",
+                                    "height": "100%",
+                                },
+                            ),
+                            html.Div( # Pattern density box
+                                [
+                                    html.P( # Pattern density title
+                                        'Pattern Density',
+                                        style={
+                                            "color": "#506784",
+                                            "fontSize": "16px",
+                                            "fontWeight": "bold",
+                                            "textAlign": "center",
+                                            "marginBottom": "0",
+                                            "marginTop": "5"
+                                        },
+                                    ),
+                                    dcc.Slider( # Pattern density slider
+                                        id='pattern-density-slider',
+                                        min=0,
+                                        max=100,
+                                        step=5,
+                                        value=50,
+                                    ),
+                                    html.Div( # Output from slider
+                                        id='slider-output', 
+                                        style=
+                                            {
+                                                'textAlign':'center',
+                                                "padding": "5px 13px 0px 13px",
+                                                "marginTop": "5",
+                                                "marginBottom": "0"
+                                            }
+                                    )
+                                ],
+                                className='four columns',
+                                style={
+                                        "backgroundColor": "white",
+                                        "border": "1px solid #C8D4E3",
+                                        "borderRadius": "3px",
+                                        "height": "100%",
+                                        # "overflowY": "scroll",
+                                }
+                            ),
+                            html.Div( # Removal rate input box
+                                [
+                                    html.P( # Removal rate title
+                                        'Removal Rate',
+                                        style={
+                                            "color": "#506784",
+                                            "fontSize": "16px",
+                                            "fontWeight": "bold",
+                                            "textAlign": "center",
+                                            "marginBottom": "5",
+                                            "marginTop": "5"
+                                        },
+                                    ),
+                                    html.Div( # Removal rate input
+                                        [
+                                            dcc.Input(
+                                                id='removal-rate', 
+                                                type='text', 
+                                                placeholder='1000',
+                                                value=1000,
+                                                size=10,
+                                            ),
+                                            html.Span(' A/min')
+                                        ],
+                                        style=
+                                            {
+                                                "padding": "5px 13px 5px 13px", 
+                                                "marginBottom": "5",
+                                                "marginTop": "5",
+                                                "textAlign": "center",
+                                                "horizontalAlign": "middle",
+                                                "verticalAlign": "middle"
+                                            },
+                                        className="row"
+                                    ),
+                                ],
+                                className='four columns',
+                                style={
+                                    "backgroundColor": "white",
+                                    "border": "1px solid #C8D4E3",
+                                    "borderRadius": "3px",
+                                    "height": "100%",
+                                    },
+                            ),
+                            # html.Div(
+                            #     html.H3('Plot'), 
+                            #     className='six columns', 
+                            #     style={'textAlign':'center'})
+                        ], 
+                        className='row',
+                    ),
+                    html.Div( # Stack layer input row, left side
+                        [
+                            html.Div([ # Active stack layer input
+                                html.H3(
+                                    "Active Stack",
+                                    style={
+                                        "color": "#506784",
+                                        "fontWeight": "bold",
+                                        "fontSize": "24",
+                                    },
+                                ),
+                                html.Div(
+                                    dcc.Dropdown(id='active_nlayers_dropdown', 
+                                                options=[{'label':i, 'value':i} for i in range(1, max_layers)],
+                                                placeholder='Select Film Layers'),
+                                    style={
+                                        'width':'30%',
+                                        'textAlign': 'center',
+                                        'display':'table-cell'
+                                    }),
+                                html.Div(id='active-controls-container', className='row'),
+                                dcc.Input(
+                                    id='active-input-box', 
+                                    type='text', 
+                                    placeholder='Si Substrate',
+                                    disabled=True,
+                                    style={
+                                        'textAlign':True
+                                    }
+                                ), 
+                                ], 
+                                className="six columns",
+                                style={
+                                    "backgroundColor": "white",
+                                    # "border": "1px solid #C8D4E3",
+                                    # "borderRadius": "3px",
+                                    "height": "100%",
+                                    "paddingTop": "15"
+                                    },
+                            ),
+                            html.Div([ # Trench stack layer input 
+                                html.H3(
+                                    "Trench Stack",
+                                    style={
+                                        "color": "#506784",
+                                        "fontWeight": "bold",
+                                        "fontSize": "24",
+                                    },
+                                ),
+                                html.Div(
+                                    dcc.Dropdown(id='trench_nlayers_dropdown', 
+                                                options=[{'label':i, 'value':i} for i in range(1, max_layers)],
+                                                placeholder='Select Film Layers'),
+                                    style={
+                                        'width':'30%',
+                                        'textAlign': 'center',
+                                        'display':'table-cell'
+                                    }),
+                                html.Div(id='trench-controls-container', className='row'),
+                                dcc.Input( # Si placeholder
+                                    id='trench-input-box', 
+                                    type='text', 
+                                    placeholder='Si Substrate',
+                                    disabled=True,
+                                    style={
+                                        'textAlign':'center'
+                                    }
+                                ), 
+                                ], 
+                                className="six columns",
+                                style={
+                                    "backgroundColor": "white",
+                                    # "border": "1px solid #C8D4E3",
+                                    # "borderRadius": "3px",
+                                    "height": "100%",
+                                    "paddingTop": "15"
+                                    },
+                            )
+                        ],
+                        className='row'
+                    ),
+                ],
+                className='six columns',
+            ),
+            html.Div([
+                html.Div(id='data-output-active', style={'display':'none'}),
+                html.Div(id='data-output-trench', style={'display':'none'}),
+                html.Div(id='data-output')
+                ], 
+                className='six columns'
             )
-        ], className='two columns'),
-        html.Div(html.H3('Plot'), className='six columns', style={'textAlign':'center'})
-    ], className='row'),
-    html.Div([
-        html.Div([
-            html.Div(html.H4('Active Stack')),
-            html.Div(
-                dcc.Dropdown(id='active_nlayers_dropdown', 
-                            options=[{'label':i, 'value':i} for i in range(1, max_layers)],
-                            placeholder='N Film Layers'),
-                style={
-                    'width':'30%',
-                    'textAlign': 'center',
-                    'display':'table-cell'
-                }),
-            html.Div(id='active-controls-container', className='row'),
-            dcc.Input(id='active-input-box', type='text', placeholder='Si Substrate'), 
-            ], className="three columns")]
+        ],
+        className='row',
+        style={
+            "margin":"2%"
+        }
     ),
-    html.Div([
-        html.Div([
-            html.Div(html.H4('Trench Stack')),
-            html.Div(
-                dcc.Dropdown(id='trench_nlayers_dropdown', 
-                            options=[{'label':i, 'value':i} for i in range(1, max_layers)],
-                            placeholder='N Film Layers'),
-                style={
-                    'width':'30%',
-                    'textAlign': 'center',
-                    'display':'table-cell'
-                }),
-            html.Div(id='trench-controls-container', className='row'),
-            dcc.Input(id='trench-input-box', type='text', placeholder='Si Substrate'), 
-            html.Div(html.Button('Calculate', id='calculate'),
-                style={
-                    'height':'400px',
-                    'width':'500px'
-                }),
-        ], className="three columns")]
+    html.Div( # Button row
+        html.Button('Calculate', id='calculate'),
+        className='eight columns',
+        style={
+            'float':'right'
+        }
     ),
-    html.Div([
-        html.Div(id='data-output-active', style={'display':'none'}),
-        html.Div(id='data-output-trench', style={'display':'none'}),
-        html.Div(id='data-output')
-        ], className='six columns')
-])
+    ],
+)
 
 
 state_components = { # dict comp of all possible n_layers of active stack
@@ -662,6 +838,7 @@ def generate_callback(n1, n2):
     
         #BUG: active and trench cant have different number of layers?
 
+
         active_films = ast.literal_eval(x1.split('*')[0])
         active_thks = ast.literal_eval(x1.split('*')[1])
         active_r = compute_reflectance(active_films, active_thks, medium) #BUG: calculating twice?
@@ -694,7 +871,11 @@ def generate_callback(n1, n2):
                             'mode': 'line',
                             'name': 'Reflectance'
                         }
-                    ]
+                    ],
+                    'figure': go.Layout(
+                        xaxis={'title':'reflectance'},
+                        yaxis={'title':'wavelength'}
+                    )
                 }
             )
         ])
