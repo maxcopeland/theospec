@@ -1,5 +1,6 @@
 import ast
 import itertools
+import time
 import numpy as np
 import dash
 import dash_core_components as dcc
@@ -9,7 +10,7 @@ import pandas as pd
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output, State
 from scipy.interpolate import interp1d
-from tmm.color import calc_reflectances
+from .core_tmm import calc_reflectances
 
 from app import app, db
 from app.models import User, Post, Material, NKValues
@@ -21,6 +22,7 @@ simulator = dash.Dash(name='simulator', external_stylesheets=external_stylesheet
                       sharing=True, server=app, url_base_pathname='/data/')
 
 simulator.config['suppress_callback_exceptions']=True
+simulator.title = 'Simulator'
 
 max_layers = 10
 
@@ -47,6 +49,35 @@ simulator.layout= html.Div(
                 'border': '1px solid #C8D4E3',
             }
         ),
+        html.Div( # Input/Plot title row
+            [
+                html.Div(html.H2('Wafer Info',
+                        style={
+                                "color": "#506784",
+                                # "fontSize": "16px",
+                                "fontWeight": "bold",
+                                "textAlign": "center",
+                                "marginBottom": "0",
+                                "marginTop": "5"
+                            }
+                        ),
+                    className='six columns'
+                ),
+                html.Div(html.H2('Theoretical FV Spectra',
+                        style={
+                                "color": "#506784",
+                                # "fontSize": "16px",
+                                "fontWeight": "bold",
+                                "textAlign": "center",
+                                "marginBottom": "0",
+                                "marginTop": "5"
+                            }
+                        ),
+                    className='six columns'
+                ),
+            ],
+            className='row'
+        ),
         html.Div([ # Input/Plot row
             html.Div(
                 [ # Left side of page
@@ -71,7 +102,8 @@ simulator.layout= html.Div(
                                             options=[
                                                 {'label':'Air', 'value':1},
                                                 {'label':'Water', 'value':1.3333}
-                                            ]
+                                            ],
+                                            value=1.3333,
                                         ), 
                                         style={"padding": "0px 5px 5px 5px", "marginBottom": "5"}, 
                                     )
@@ -189,11 +221,12 @@ simulator.layout= html.Div(
                                 html.Div(
                                     dcc.Dropdown(id='active_nlayers_dropdown', 
                                                 options=[{'label':i, 'value':i} for i in range(1, max_layers)],
-                                                placeholder='Select Film Layers'),
-                                    style={
-                                        'width':'30%',
-                                        'textAlign': 'center',
-                                        'display':'table-cell'
+                                                placeholder='Select Film Layers',
+                                                ),
+                                        style={
+                                            'width':'30%',
+                                            'textAlign': 'center',
+                                            'display':'table-cell'
                                     }),
                                 html.Div(id='active-controls-container', className='row'),
                                 dcc.Input(
@@ -202,7 +235,9 @@ simulator.layout= html.Div(
                                     placeholder='Si Substrate',
                                     disabled=True,
                                     style={
-                                        'textAlign':True
+                                        'textAlign':'center',
+                                        'width':'250',
+                                        'backgroundColor':'lightgrey'
                                     }
                                 ), 
                                 ], 
@@ -240,9 +275,27 @@ simulator.layout= html.Div(
                                     placeholder='Si Substrate',
                                     disabled=True,
                                     style={
-                                        'textAlign':'center'
+                                        'textAlign':'center',
+                                        'width':'250',
+                                        'backgroundColor':'lightgrey'
                                     }
                                 ), 
+                                html.Div( # Button row
+                                    html.Button('Calculate', 
+                                        id='calculate',
+                                        style={
+                                            'color':'white',
+                                            'backgroundColor':'green',
+                                        }
+                                    ),
+                                    # className='eight columns',
+                                    style={
+                                        'height':'300',
+                                        'float':'right',
+                                        'marginRight':'0',
+                                        'marginTop':'70',
+                                    }
+                                ),
                                 ], 
                                 className="six columns",
                                 style={
@@ -252,7 +305,7 @@ simulator.layout= html.Div(
                                     "height": "100%",
                                     "paddingTop": "15"
                                     },
-                            )
+                            ),
                         ],
                         className='row'
                     ),
@@ -260,9 +313,15 @@ simulator.layout= html.Div(
                 className='six columns',
             ),
             html.Div([
+                dcc.Tabs(id='chart-tabs', value='r-spectra', children=[
+                    dcc.Tab(label='R Spectra', value='r-spectra'),
+                    dcc.Tab(label='2D Spectra', value='contour')
+                    ]
+                ),
                 html.Div(id='data-output-active', style={'display':'none'}),
                 html.Div(id='data-output-trench', style={'display':'none'}),
-                html.Div(id='data-output')
+                html.Div(id='data-output'),
+                html.Div(id='dummy-graph')
                 ], 
                 className='six columns'
             )
@@ -270,13 +329,6 @@ simulator.layout= html.Div(
         className='row',
         style={
             "margin":"2%"
-        }
-    ),
-    html.Div( # Button row
-        html.Button('Calculate', id='calculate'),
-        className='eight columns',
-        style={
-            'float':'right'
         }
     ),
     ],
@@ -321,16 +373,24 @@ def create_possible_stacks(stack_type, film_options=[1,2,3,4], max_layers=max_la
                     html.Div([
                         dcc.Dropdown(
                             id='{}-film-{}'.format(stack_type, i), 
-                            placeholder='Film',
+                            placeholder='Layer {} Film'.format(i),
                             options=[{'label':mat.name, 'value':mat.name} for mat in Material.query.all()])
                         ], 
                         style= {
-                            'width':'30%', 
+                            'width':'125', 
                             'display':'table-cell'
                         }
                     ),
                     html.Div([
-                        dcc.Input(id='{}-thickness-{}'.format(stack_type, i),placeholder="Layer {}".format(i), type='text')
+                        dcc.Input(
+                            id='{}-thickness-{}'.format(stack_type, i),
+                            placeholder="(A)".format(i), 
+                            type='text',
+                            style={
+                                'width':'75',
+                                'textAlign':'center'
+                            }
+                        )
                         ],
                         style={
                             'width':'30%',
@@ -779,9 +839,9 @@ def get_nkvals(mat_name):
         df['wavelength'] = df.wavelength /10
     return df
 
-def compute_reflectance(mat_names, thicknesses, medium):
+def compute_reflectance_1d(mat_names, thicknesses, medium):
     """
-    Compute reflectances of given film stack
+    Compute reflectances of given film stack for fixed stack thickness
 
     input
     ======
@@ -816,80 +876,331 @@ def compute_reflectance(mat_names, thicknesses, medium):
     r_df = pd.DataFrame(reflectance, columns=['wavelength', 'r'])
     return r_df
 
-def spectra_calc_2d():
+def compute_reflectance_2d(active_names, active_thicknesses, trench_names, trench_thicknessness, 
+                          rr, medium):
     """
-    Calculate spectra for 2D plot
-    
-    """
-    pass
+    Compute reflectances of given film stack for variable thicknesses
 
-def spectra_calc_3d():
+    input
+    ======
+
+    mat_names: list
+        string names of film type
+    thicknesses: list
+        int values of film thicknesses in Angstroms
+    rr: numeric
+        removal rate in A/min
+    medium: float
+        index of refraction of medium on top of stack (air, water, etc)
+
+    output
+    ======
+
+    pandas DataFrame
+        columns: wavelength, reflectance
+
     """
-    Calculate spectra for 3D plot
+    a_s = rr / 60 # removal rate in A/s
+    top_layer = active
+
+    active_fns = []
+    trench_fns = []
+    for mat_names, n_fn_list in zip((active_names, trench_names), (active_fns, trench_fns)):
+        for mat in mat_names:
+            mat_df = get_nkvals(mat)
+            mat_fn = interp1d(mat_df.wavelength, mat_df.nk, kind='linear')
+            fns.append(mat_fn)
+    medium_fn = lambda wavelength: medium
+    si_df = get_nkvals('Si') ## change to make film passable
+    si_fn = interp1d(si_df.wavelength, si_df.nk, kind='linear')
+
+    reflectance = calc_reflectances(n_fn_list=[medium_fn] + mat_fns + [si_fn], 
+                                    d_list=[np.inf] + current_thicknesses + [np.inf], 
+                                    th_0=0, 
+                                    spectral_range=(260, 1700))
+    r_df = pd.DataFrame(reflectance, columns=['wavelength', '0s'])
+
+
+    for sec in range(active_thicknesses[-1]/a_s): #
+        thk_by_pol_time = thicknesses[:-1] + [thicknesses[-1] - sec*a_s]
+        r_by_pol_time = calc_reflectances(n_fn_list=[medium_fn] + mat_fns + [si_fn], 
+                                        d_list=[np.inf] + thk_by_pol_time + [np.inf], 
+                                        th_0=0, 
+                                        spectral_range=(260, 1700))
+        r_df['{}s'.format(sec)] = r_by_pol_time[:,1]
+    return r_df
+
+def combine_spectra(active_r, trench_r, pattern_density, medium):
     
+    """ 
+    Compute aggregate spectra from active and trench reflectance 
+    as a function of pattern_density
+
+    input
+    ------
+    
+    active_r: pandas Dataframe with columns wavelength and r
+
+    trench_r: pandas Dataframe with columns wavelength and r
+
+    pattern_density: float, fraction of pattern mask containing active sites
+                     (between 0 and 1)
+
+    output
+    -------
+    numpy array, computed reflectance with columns 0 and 1 as wavelength 
+    and reflectance respectively
+        
     """
-    pass
+
+    base_reflectance = trench_r.copy().values
+    ref_si = compute_reflectance_1d(['Si'], [50000], medium)
+
+    np.multiply(base_reflectance[:,1], (1 - (pattern_density/100)), base_reflectance[:,1])
+    np.add(base_reflectance[:,1], active_r.r*(pattern_density/100), base_reflectance[:,1])
+    np.divide(base_reflectance[:,1], ref_si.r, base_reflectance[:,1])
+
+    return base_reflectance
+
 
 
 def generate_callback(n1, n2):
-    def callback_data(x1, x2, medium, pattern_density, rr):
-        # print('test total value for {} and {}'.format(n1, n2))
-        # print('Incoming for x1: {},\n Incoming for x2:{}'.format(x1, x2))
-    
-        #BUG: active and trench cant have different number of layers?
+    def callback_data(x1, x2, tab, medium, pattern_density, rr):
 
+        t_start = time.perf_counter()
 
         active_films = ast.literal_eval(x1.split('*')[0])
-        active_thks = ast.literal_eval(x1.split('*')[1])
-        active_r = compute_reflectance(active_films, active_thks, medium) #BUG: calculating twice?
-
-        trench_films = ast.literal_eval(x2.split('*')[0])
-        trench_thks = ast.literal_eval(x2.split('*')[1])
-        trench_r = compute_reflectance(trench_films, trench_thks, medium) #BUG: calculating twice?
+        active_thks = [x/10 for x in ast.literal_eval(x1.split('*')[1])] # convert to nm for calc
+        active_r = compute_reflectance_1d(active_films, active_thks, medium)
 
 
-        # print('Active', active_r.head())
-        # print('Trench', trench_r.head())
-        base_reflectance = trench_r.values 
-        ref_si = compute_reflectance(['Si'], [50000], 1.33333)
+        trench_films = ast.literal_eval(x2.split('*')[0]) # convert to nm for calc
+        trench_thks = [x/10 for x in ast.literal_eval(x2.split('*')[1])] # convert to nm for calc
+        trench_r = compute_reflectance_1d(trench_films, trench_thks, medium)
 
-        np.multiply(base_reflectance[:,1], (1 - (pattern_density/100)), base_reflectance[:,1])
-        np.add(base_reflectance[:,1], active_r.r*(pattern_density/100), base_reflectance[:,1])
-        np.divide(base_reflectance[:,1], ref_si.r, base_reflectance[:,1])
-        # print('Parsed Incoming active films: {}'.format(active_films))
-        # print('Parsed Incoming active thks: {}'.format(active_thks))
-        # print('Parsed Incoming trench films: {}'.format(trench_films))
-        # print('Parsed Incoming trench thks: {}'.format(trench_thks))
-        graph = html.Div([
-            # html.Div(str(slider) + str(medium) + str(rr)),
-            dcc.Graph(
-                figure={
-                    'data': [
-                        {
-                            'x':base_reflectance[:,0],
-                            'y':base_reflectance[:,1],
-                            'mode': 'line',
-                            'name': 'Reflectance'
-                        }
-                    ],
-                    'figure': go.Layout(
-                        xaxis={'title':'reflectance'},
-                        yaxis={'title':'wavelength'}
+        combined_spectra = combine_spectra(active_r, trench_r, pattern_density, medium)
+
+
+        if tab == 'r-spectra':
+
+            # active_films = ast.literal_eval(x1.split('*')[0])
+            # active_thks = ast.literal_eval(x1.split('*')[1])
+            # active_r = compute_reflectance_1d(active_films, active_thks, medium)
+
+            # trench_films = ast.literal_eval(x2.split('*')[0])
+            # trench_thks = ast.literal_eval(x2.split('*')[1])
+            # trench_r = compute_reflectance_1d(trench_films, trench_thks, medium)
+
+            # combined_spectra = combine_spectra(active_r, trench_r, pattern_density, medium)
+
+
+            t_end = time.perf_counter()
+            print("CALC TIME:    ", (t_end - t_start), "SECONDS")
+            print('Active films: {}'.format(active_films))
+            print('Active thks: {}'.format(active_thks))
+            print('Combined spectra:{}'.format(combined_spectra[:,:5]))
+            graph = html.Div([
+                    dcc.Graph(
+                        figure={
+                            'data': [
+                                {
+                                    'x':combined_spectra[:,0],
+                                    'y':combined_spectra[:,1],
+                                    'mode': 'line',
+                                    'name': 'Reflectance'
+                                }
+                            ],
+                            'layout': go.Layout(
+                                xaxis=dict(
+                                    title='wavelength',
+                                    # range=[200, 1000]
+                                    ),
+                                yaxis=dict(
+                                    title='computed intensity',
+                                    # range=[0, 2]
+                                    )
+                                )
+                            },
                     )
-                }
-            )
-        ])
+                ])
+        elif tab == 'contour':
+            rr = int(rr)
+
+            # active_films = ast.literal_eval(x1.split('*')[0]) # convert to nm for calc
+            # active_thks = [x/10 for x in ast.literal_eval(x1.split('*')[1])] # convert to nm for calc
+            # active_r = compute_reflectance_1d(active_films, active_thks, medium)
+
+
+            # trench_films = ast.literal_eval(x2.split('*')[0]) # convert to nm for calc
+            # trench_thks = [x/10 for x in ast.literal_eval(x2.split('*')[1])] # convert to nm for calc
+            # trench_r = compute_reflectance_1d(trench_films, trench_thks, medium)
+
+            # spectra_matrix = combine_spectra(active_r, trench_r, pattern_density, medium)
+            
+            rr_as = rr / 60 # removal rate in A/s
+            rr_nm = (rr / 10) / 60 # removal rate in nm/s
+
+            # setting rr for testing purposes
+            rr_nms = 10000 / 10 / 60
+
+            t_start = time.perf_counter()
+            print(active_thks[-1])
+            starting_thk_active = active_thks[-1] # in nm
+            starting_thk_trench = trench_thks[-1] # in nm
+
+            # pol_time = int(starting_thk_active/rr_nms)
+            # setting explicit int for testing
+            pol_time = 7
+
+            full_matrix = np.zeros((combined_spectra.shape[0], pol_time))
+
+            for sec in range(pol_time):
+                active_thks_sim = active_thks[:-1] + [(starting_thk_active - sec*rr_nms)]
+                active_r_sim = compute_reflectance_1d(active_films, active_thks_sim, medium)
+
+                trench_thks_sim = trench_thks[:-1] + [(starting_thk_trench - sec*rr_nms)]
+                trench_r_sim = compute_reflectance_1d(trench_films, trench_thks_sim, medium)
+
+                combined_spectra = combine_spectra(active_r_sim, trench_r_sim, pattern_density, medium)
+                # spectra_matrix = np.hstack((spectra_matrix, combined_spectra[:,1]))
+                # full_matrix.append(combined_spectra[:,1])
+                # full_matrix[:, sec] = active_r_sim.r.values
+                full_matrix[:, sec] = combined_spectra[:,1]
+
+            t_stop = time.perf_counter()
+
+            print('Comp time: {:.2f}'.format(t_stop - t_start))
+
+            # for x axis labels
+            pol_time = active_thks[-1] / rr_nm
+            print('Active thks: {}'.format(active_thks[-1]))
+            print('RR nm/s: {}'.format(rr_nm))
+            print('pol time: {}'.format(pol_time))
+            x_labels = list(range(0, int(pol_time), full_matrix.shape[1])),
+            print('x-labels: {}'.format(x_labels))
+            print('full-matrix-shape: {}'.format(full_matrix.shape))
+
+            graph = html.Div([
+                        dcc.Graph(
+                            figure={
+                                'data': [
+                                    go.Contour(
+                                        z=np.array(full_matrix),
+                                        # x=list(range(int((active_thks[-1]/rr_as) * 60))), # testing rr_nms
+                                        # x=list(range(0, int(pol_time), full_matrix.shape[1])),
+                                        x=[0, 10, 20, 30, 40, 50],
+                                        y=combined_spectra[:,0],
+                                        colorscale='Jet',
+                                        contours=dict(
+                                            coloring='heatmap'
+                                        )
+                                    )
+                                ],
+                                'layout': go.Layout(
+                                    xaxis=dict(
+                                        title='Polish Time (s)',
+                                        # range=[200, 1000]
+                                        ),
+                                    yaxis=dict(
+                                        title='Wavelength',
+                                        # range=[0, 2]
+                                        )
+                                    )
+                            },
+                    )
+                ])
+            pd.DataFrame(full_matrix).to_csv('spectra_matrix.csv')
+        
         return graph
     return callback_data
+
+
+@simulator.callback(
+    Output('dummy-graph', 'style'),
+    [Input('data-output', 'children')]
+)
+def turnoff_dummy_plot(output):
+    if output:
+        return {'display':'none'}
+
+@simulator.callback(
+    Output('dummy-graph', 'children'),
+    [Input('chart-tabs', 'value')]
+)
+def tab_callback(tab):
+    if tab == 'r-spectra':
+        return dcc.Graph(
+                figure={
+                    'data':[],
+                    'layout': go.Layout(
+                        xaxis=dict(
+                            title='wavelength',
+                            range=[200, 1000]
+                            ),
+                        yaxis=dict(
+                            title='computed intensity',
+                            range=[0, 2]
+                            )
+                        )
+                    },
+            ),
+    elif tab == 'contour':
+        return dcc.Graph(
+            figure=go.Figure(
+                data=[
+                    go.Contour(
+                    )
+                ],
+                # layout=go.Layout(
+                #     plot_bgcolor='midnightblue'
+                )
+            )
+
+@simulator.callback(
+    Output('removal-rate', 'disabled'),
+    [Input('chart-tabs', 'value')]
+)
+def disable_rr_input_for_2dplot(tab):
+    if tab == 'r-spectra':
+        return True
+
+
+@simulator.callback(
+    Output('removal-rate', 'style'),
+    [Input('chart-tabs', 'value')]
+)
+def disable_rr_input_for_2dplot(tab):
+    if tab == 'r-spectra':
+        return {'color':'grey', 'textAlign':'center', 'width':'75'}
+    else:
+        return {'textAlign':'center', 'width':'75'}
+
+
+@simulator.callback(
+    Output('removal-rate', 'value'),
+    [Input('chart-tabs', 'value')]
+)
+def disable_rr_input_for_2dplot(tab):
+    if tab == 'r-spectra':
+        return "n/a"
+    elif tab == 'contour':
+        return 1000
+
 
 ## Callback to put all input data into one div 
 for val1, val2 in itertools.product(np.arange(1, max_layers), np.arange(1, max_layers)):
     simulator.callback(
         Output(generate_data_output_id(val1, val2), 'children'),
         [Input(generate_output_id_active(val1), 'children'), 
-         Input(generate_output_id_trench(val2), 'children')],
+         Input(generate_output_id_trench(val2), 'children'),
+         Input('chart-tabs', 'value')],
         [State('medium', 'value'),
          State('pattern-density-slider', 'value'),
          State('removal-rate', 'value')])(
              generate_callback(val1, val2)
          )
+    # simulator.callback(
+    #     Output('graph', 'figure'),
+    #     [Input(generate_data_output_id(val1, val2), 'children')])(
+    #         callback_plot(val1, val2)
+    #     )
