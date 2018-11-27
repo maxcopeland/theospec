@@ -219,15 +219,35 @@ simulator.layout= html.Div(
                                     },
                                 ),
                                 html.Div(
-                                    dcc.Dropdown(id='active_nlayers_dropdown', 
-                                                options=[{'label':i, 'value':i} for i in range(1, max_layers)],
-                                                placeholder='Select Film Layers',
-                                                ),
-                                        style={
-                                            'width':'30%',
-                                            'textAlign': 'center',
-                                            'display':'table-cell'
-                                    }),
+                                    [
+                                        html.Div(
+                                            dcc.Dropdown(id='active_nlayers_dropdown', 
+                                                    options=[{'label':i, 'value':i} for i in range(1, max_layers)],
+                                                    placeholder='N Layers',
+                                                    # style={
+                                                    #     'width':'50'
+                                                    # }
+                                            ),
+                                            className='four columns'
+                                        ),
+                                        html.Div(
+                                            dcc.RadioItems(id='active-radio',
+                                                        options=[
+                                                            {'label':'Custom', 'value':'custom'},
+                                                            {'label':'3D NAND', 'value':'nand'}
+                                                        ],
+                                                        value='custom'
+                                            ),
+                                            className='four columns'
+                                        ),
+                                    ],
+                                    style={
+                                        'width':'30%',
+                                        'textAlign': 'center',
+                                        'display':'table-cell'
+                                    },
+                                    className='row'
+                                ),
                                 html.Div(id='active-controls-container', className='row'),
                                 dcc.Input(
                                     id='active-input-box', 
@@ -260,14 +280,35 @@ simulator.layout= html.Div(
                                     },
                                 ),
                                 html.Div(
-                                    dcc.Dropdown(id='trench_nlayers_dropdown', 
-                                                options=[{'label':i, 'value':i} for i in range(1, max_layers)],
-                                                placeholder='Select Film Layers'),
+                                    [
+                                        html.Div(
+                                            dcc.Dropdown(id='trench_nlayers_dropdown', 
+                                                    options=[{'label':i, 'value':i} for i in range(1, max_layers)],
+                                                    placeholder='N Layers',
+                                                    # style={
+                                                    #     'width':'50'
+                                                    # }
+                                            ),
+                                            className='four columns'
+                                        ),
+                                        html.Div(
+                                            dcc.RadioItems(id='trench-radio',
+                                                        options=[
+                                                            {'label':'Custom', 'value':'custom'},
+                                                            {'label':'3D NAND', 'value':'nand'}
+                                                        ],
+                                                        value='custom'          
+                                            ),
+                                            className='four columns'
+                                        ),
+                                    ],
                                     style={
                                         'width':'30%',
                                         'textAlign': 'center',
                                         'display':'table-cell'
-                                    }),
+                                    },
+                                    className='row'
+                                ),
                                 html.Div(id='trench-controls-container', className='row'),
                                 dcc.Input( # Si placeholder
                                     id='trench-input-box', 
@@ -402,8 +443,138 @@ def create_possible_stacks(stack_type, film_options=[1,2,3,4], max_layers=max_la
         possible_stacks[n] = list(reversed(rows))
     return possible_stacks
 
+def create_nand_stacks(stack_type, nand_layers=2, max_layers=max_layers): # 
+    """ Function to generate components for stack layers
+    
+    inputs
+    ------
+    
+    stack_type: str, assigned to prefix of each unique component id
+    
+    nand_layers: number of unique NAND layers
+    
+    max_layers: maximum number of layers that can be created
+    
+    output
+    ------
+    
+    dict:
+        key- int, n layers in stack
+        value- n rows of layer html components
+        
+        """
+    nand_base = []
+
+    for i in range(1, nand_layers + 1):
+        row = html.Div([
+                html.Div([
+                    dcc.Dropdown(
+                        id='{}-film-{}'.format(stack_type, i), 
+                        placeholder='NAND Layer {} Film'.format(i),
+                        options=[{'label':mat.name, 'value':mat.name} for mat in Material.query.all()])
+                    ], 
+                    style= {
+                        'width':'125', 
+                        'display':'table-cell'
+                    }
+                ),
+                html.Div([
+                    dcc.Input(
+                        id='{}-thickness-{}'.format(stack_type, i),
+                        placeholder="(A)".format(i), 
+                        type='text',
+                        style={
+                            'width':'75',
+                            'textAlign':'center'
+                        }
+                    )
+                    ],
+                    style={
+                        'width':'30%',
+                        'display':'table-cell'
+                    }
+                )
+            ], className="row")    
+        nand_base.append(row)
+
+    # nand_base = html.Div(nand_base, 
+    #                     style={
+    #                         'marginTop':'5'
+    #                     })
+
+    possible_stacks = {}
+
+    for n in range(1, max_layers - nand_layers):
+        rows = []
+        for i in range(1, n+1):
+            row = html.Div([
+                    html.Div([
+                        dcc.Dropdown(
+                            id='{}-film-{}'.format(stack_type, i+nand_layers), 
+                            placeholder='Top Layer {} Film'.format(i),
+                            options=[{'label':mat.name, 'value':mat.name} for mat in Material.query.all()])
+                        ], 
+                        style= {
+                            'width':'125', 
+                            'display':'table-cell'
+                        }
+                    ),
+                    html.Div([
+                        dcc.Input(
+                            id='{}-thickness-{}'.format(stack_type, i+nand_layers),
+                            placeholder="(A)", 
+                            type='text',
+                            style={
+                                'width':'75',
+                                'textAlign':'center'
+                            }
+                        )
+                        ],
+                        style={
+                            'width':'30%',
+                            'display':'table-cell'
+                        }
+                    )
+                ], className="row")
+
+            rows.append(row)
+        possible_stacks[n] = list(reversed(rows)) + [html.Div(
+                                                        [
+                                                            html.Div([
+                                                                html.Span('NAND Pairs: ',
+                                                                ),
+                                                                dcc.Input(
+                                                                    id='{}-dram-pairs'.format(stack_type),
+                                                                    placeholder='N Pairs',
+                                                                    type='text',
+                                                                    style={
+                                                                        'width':'75'
+                                                                    }
+                                                                ),
+                                                                ],
+                                                                style={
+                                                                    'display':'inline-block',
+                                                                    # 'textAlign':'right',
+                                                                    # 'horizontalAlign':'right',
+                                                                    'vertical-align':'right',
+                                                                }
+                                                            ),
+                                                            html.Div(list(reversed(nand_base)), 
+                                                                    #  style={'marginTop':'10'}
+                                                            ),
+                                                        ],
+                                                        style={
+                                                            'marginTop':'15'
+                                                        }
+                                                    )
+                                                    ]
+    return possible_stacks
+
 active_layers = create_possible_stacks('active')
 trench_layers = create_possible_stacks('trench')
+
+active_nand_stack = create_nand_stacks('active')
+trench_nand_stack = create_nand_stacks('trench')
 
 @simulator.callback(
     Output('slider-output', 'children'),
@@ -414,19 +585,27 @@ def pattern_density_div(value):
 
 @simulator.callback(
     dash.dependencies.Output('active-controls-container', 'children'),
-    [dash.dependencies.Input('active_nlayers_dropdown', 'value')])
-def render_active_components(n):
+    [dash.dependencies.Input('active_nlayers_dropdown', 'value')],
+    [dash.dependencies.State('active-radio', 'value')])
+def render_active_components(n_layers, stack_type):
     # trigger page refresh?
-    if n:
-        return active_layers[n]
+    if n_layers:
+        if stack_type == 'custom':
+            return active_layers[n_layers]
+        elif stack_type == 'nand':
+            return active_nand_stack[n_layers]
 
 @simulator.callback(
     dash.dependencies.Output('trench-controls-container', 'children'),
-    [dash.dependencies.Input('trench_nlayers_dropdown', 'value')])
-def render_trench_components(n):
+    [dash.dependencies.Input('trench_nlayers_dropdown', 'value')],
+    [dash.dependencies.State('trench-radio', 'value')])
+def render_trench_components(n_layers, stack_type):
     # trigger page refresh?
-    if n:
-        return trench_layers[n]
+    if n_layers:
+        if stack_type == 'custom':
+            return trench_layers[n_layers]
+        elif stack_type == 'nand':
+            return trench_nand_stack[n_layers]
 
 
 def generate_output_id_active(n):
@@ -438,16 +617,22 @@ def generate_output_id_trench(n):
 
 @simulator.callback(
     Output('data-output-active', 'children'),
-    [Input('active_nlayers_dropdown', 'value')]
+    [Input('active_nlayers_dropdown', 'value')],
+    [State('active-radio', 'value')]
 )
-def display_controls_active(n):
+def display_controls_active(n, stack_type):
+    if stack_type == 'nand':
+        n = n+2
     return html.Div('Controls container for active {}'.format(n), id=generate_output_id_active(n))
 
 @simulator.callback(
     Output('data-output-trench', 'children'),
-    [Input('trench_nlayers_dropdown', 'value')]
+    [Input('trench_nlayers_dropdown', 'value')],
+    [State('trench-radio', 'value')]
 )
-def display_controls_trench(n):
+def display_controls_trench(n, stack_type):
+    if stack_type == 'nand':
+        n = n+2
     return html.Div('Controls container trench {}'.format(n), id=generate_output_id_trench(n))
 
 
@@ -455,14 +640,14 @@ def display_controls_trench(n):
 def stack_calc(values):
     # TODO- cleaner parsing
 
-    films = []
-    for val in values[::2]:
-        films.append(str(val))
-    thks = []
-    for val in values[1::2]:
-        thks.append(int(val))
-    return str(films) + '*' + str(thks) #data to be parsed from hidden div-- split on "*"
-
+    # films = []
+    # for val in values[::2]:
+    #     films.append(str(val))
+    # thks = []
+    # for val in values[1::2]:
+    #     thks.append(int(val))
+    # return str(films) + '*' + str(thks) #data to be parsed from hidden div-- split on "*"
+    print (values)
 
 
 

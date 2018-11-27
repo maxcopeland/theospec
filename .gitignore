@@ -120,4 +120,4 @@ uploads/
 *.db
 
 # Notebooks
-*.ipynb 
+*.ipynb "*.csv" 
