@@ -249,6 +249,7 @@ simulator.layout= html.Div(
                                     className='row'
                                 ),
                                 html.Div(id='active-controls-container', className='row'),
+                                html.Div(id='active-nand-container', style={'display':'none'}),
                                 dcc.Input(
                                     id='active-input-box', 
                                     type='text', 
@@ -310,6 +311,7 @@ simulator.layout= html.Div(
                                     className='row'
                                 ),
                                 html.Div(id='trench-controls-container', className='row'),
+                                html.Div(id='trench-nand-container', style={'display':'none'}),
                                 dcc.Input( # Si placeholder
                                     id='trench-input-box', 
                                     type='text', 
@@ -444,7 +446,11 @@ def create_possible_stacks(stack_type, film_options=[1,2,3,4], max_layers=max_la
     return possible_stacks
 
 def create_nand_stacks(stack_type, nand_layers=2, max_layers=max_layers): # 
+
+
     """ Function to generate components for stack layers
+
+    TODO: Dropdown > 7 raises error
     
     inputs
     ------
@@ -544,7 +550,7 @@ def create_nand_stacks(stack_type, nand_layers=2, max_layers=max_layers): #
                                                                 html.Span('NAND Pairs: ',
                                                                 ),
                                                                 dcc.Input(
-                                                                    id='{}-dram-pairs'.format(stack_type),
+                                                                    id='{}-nand-pairs'.format(stack_type),
                                                                     placeholder='N Pairs',
                                                                     type='text',
                                                                     style={
@@ -615,6 +621,24 @@ def generate_output_id_trench(n):
     return 'Trench container {}'.format(n)
 
 
+@simulator.callback( # generate dummy nand-pairs div
+    Output('active-nand-container', 'children'),
+    [Input('active-radio', 'value')]
+)
+def create_dummy_drampair_div(stack_type):
+    if stack_type == 'custom':
+        return html.Div(id='active-nand-pairs')
+
+
+@simulator.callback( # generate dummy nand-pairs div
+    Output('trench-nand-container', 'children'),
+    [Input('trench-radio', 'value')]
+)
+def create_dummy_drampair_div(stack_type):
+    if stack_type == 'custom':
+        return html.Div(id='trench-nand-pairs')
+
+
 @simulator.callback(
     Output('data-output-active', 'children'),
     [Input('active_nlayers_dropdown', 'value')],
@@ -640,14 +664,28 @@ def display_controls_trench(n, stack_type):
 def stack_calc(values):
     # TODO- cleaner parsing
 
-    # films = []
-    # for val in values[::2]:
-    #     films.append(str(val))
-    # thks = []
-    # for val in values[1::2]:
-    #     thks.append(int(val))
-    # return str(films) + '*' + str(thks) #data to be parsed from hidden div-- split on "*"
-    print (values)
+    films = []
+    for val in values[1::2]:
+        films.append(str(val))
+    thks = []
+    for val in values[2::2]:
+        thks.append(int(val))
+
+    if values[0]:
+        dram_films = films[:2] * int(values[0])
+        dram_thks = thks[:2] * int(values[0])
+
+        films = dram_films + films[2:]
+        thks = dram_thks + thks[2:]
+    
+    print('VALUE: {}'.format(values))
+    print ('STACK CALC FILMS: {}'.format(films))
+    print ('STACK CLAC THKS: {}'.format(thks))
+
+
+    return str(films) + '*' + str(thks) #data to be parsed from hidden div-- split on "*"
+
+
 
 
 
@@ -659,7 +697,8 @@ def stack_calc(values):
 @simulator.callback(
     Output(generate_output_id_trench(1), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value')])
 def callback_data(n_clicks, *values):
     if n_clicks:
@@ -669,7 +708,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(2), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value')])
@@ -681,7 +721,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(3), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value'),
@@ -696,7 +737,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(4), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value'),
@@ -713,7 +755,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(5), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value'),
@@ -732,7 +775,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(6), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value'),
@@ -753,7 +797,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(7), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value'),
@@ -776,7 +821,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(8), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value'),
@@ -801,7 +847,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_trench(9), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('trench-film-{}'.format(1), 'value'),
+    [State('trench-nand-pairs', 'value'),
+    State('trench-film-{}'.format(1), 'value'),
     State('trench-thickness-{}'.format(1), 'value'),
     State('trench-film-{}'.format(2), 'value'),
     State('trench-thickness-{}'.format(2), 'value'),
@@ -830,7 +877,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(1), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value')
     ])
 def callback_data(n_clicks, *values):
@@ -841,7 +889,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(2), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value')])
@@ -853,7 +902,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(3), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value'),
@@ -868,7 +918,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(4), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value'),
@@ -885,7 +936,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(5), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value'),
@@ -904,7 +956,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(6), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value'),
@@ -925,7 +978,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(7), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value'),
@@ -948,7 +1002,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(8), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value'),
@@ -973,7 +1028,8 @@ def callback_data(n_clicks, *values):
 @simulator.callback(
     Output(generate_output_id_active(9), 'children'),
     [Input('calculate', 'n_clicks')],
-    [State('active-film-{}'.format(1), 'value'),
+    [State('active-nand-pairs', 'value'),
+    State('active-film-{}'.format(1), 'value'),
     State('active-thickness-{}'.format(1), 'value'),
     State('active-film-{}'.format(2), 'value'),
     State('active-thickness-{}'.format(2), 'value'),
@@ -1005,10 +1061,16 @@ def generate_data_output_id(n1, n2):
     Output('data-output', 'children'),
     [Input('calculate', 'n_clicks'),
     Input('active_nlayers_dropdown', 'value'),
-    Input('trench_nlayers_dropdown', 'value')]
+    Input('trench_nlayers_dropdown', 'value')],
+    [State('active-radio', 'value'),
+    State('trench-radio', 'value')]
 )
-def create_data_container(n_clicks, n_active, n_trench):
+def create_data_container(n_clicks, n_active, n_trench, active_stack_type, trench_stack_type):
     if n_clicks:
+        if active_stack_type == 'nand':
+            n_active = n_active + 2
+        if trench_stack_type == 'nand':
+            n_trench = n_trench + 2
         print(generate_data_output_id(n_active, n_trench))
         return html.Div(id=generate_data_output_id(n_active, n_trench))
 
@@ -1320,7 +1382,7 @@ def tab_callback(tab):
                     'layout': go.Layout(
                         xaxis=dict(
                             title='wavelength',
-                            range=[200, 1000]
+                            range=[200, 1500]
                             ),
                         yaxis=dict(
                             title='computed intensity',

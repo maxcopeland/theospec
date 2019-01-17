@@ -340,7 +340,7 @@ def calc_reflectances(n_fn_list, d_list, th_0, pol='s', spectral_range='narrow')
     consistent with colorpy.illuminants. See  colorpy.ciexyz.start_wl_nm etc.
     """
 
-    lam_vac_list = arange(360, 831)
+    lam_vac_list = arange(250, 1500)
 
     num_layers = len(n_fn_list)
 
