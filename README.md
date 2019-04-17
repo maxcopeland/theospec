@@ -1,2 +1,2 @@
 # theospec
-Web app that generates theoretical reflectance spectra of thinfilm dielectrics
+Flask/Dash app that generates theoretical reflectance spectra of thinfilm dielectrics
