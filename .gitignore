@@ -120,4 +120,9 @@ uploads/
 *.db
 
 # Notebooks
-*.ipynb 
+*.ipynb
+
+# datafiles
+*.csv
+spectra_matrix.csv
+condaenv.lmwrjjv7.requirements.txt
